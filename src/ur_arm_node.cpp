@@ -80,48 +80,46 @@ void ArmNode::toolVelocityCallback(const geometry_msgs::Twist::ConstPtr &msg)
   params.pitch = msg->angular.y;
   params.yaw = msg->angular.z;
 
-
   lock();
   if (command_) delete command_;
   command_ = new ToolSpeedCommand(arm_, params, accel_, (1.0/frequency_)*2);
   unlock();
-
 }
 
 void ArmNode::toolTaskFrameVelocityCallback(const geometry_msgs::Twist::ConstPtr &msg)
 {
-	JointAngles angles = arm_->getJointAngles();
+  JointAngles angles = arm_->getJointAngles();
 
-	double q[6];
-	q[0] = angles.base;
-	q[1] = angles.shoulder;
-	q[2] = angles.elbow;
-	q[3] = angles.wrist1;
-	q[4] = angles.wrist2;
-	q[5] = angles.wrist3;
+  double q[6];
+  q[0] = angles.base;
+  q[1] = angles.shoulder;
+  q[2] = angles.elbow;
+  q[3] = angles.wrist1;
+  q[4] = angles.wrist2;
+  q[5] = angles.wrist3;
 
-	forkin_solver.solveForwardKin(q);
+  forkin_solver.solveForwardKin(q);
 
-	Eigen::MatrixXd vel_vec_linear(3,1);
-	Eigen::MatrixXd vel_vec_angular(3,1);
-	Eigen::MatrixXd rot_mat(3,3);
-	Eigen::MatrixXd res_lin(3,1);
-	Eigen::MatrixXd res_ang(3,1);
+  Eigen::MatrixXd vel_vec_linear(3,1);
+  Eigen::MatrixXd vel_vec_angular(3,1);
+  Eigen::MatrixXd rot_mat(3,3);
+  Eigen::MatrixXd res_lin(3,1);
+  Eigen::MatrixXd res_ang(3,1);
 
-	vel_vec_linear(0,0) = 	msg->linear.x;
-	vel_vec_linear(1,0) = 	msg->linear.y;
-	vel_vec_linear(2,0) = 	msg->linear.z;
+  vel_vec_linear(0,0) =   msg->linear.x;
+  vel_vec_linear(1,0) =   msg->linear.y;
+  vel_vec_linear(2,0) =   msg->linear.z;
 
-	vel_vec_angular(0,0) = msg->angular.x;
-	vel_vec_angular(1,0) = msg->angular.y;
-	vel_vec_angular(2,0) = msg->angular.z;
+  vel_vec_angular(0,0) = msg->angular.x;
+  vel_vec_angular(1,0) = msg->angular.y;
+  vel_vec_angular(2,0) = msg->angular.z;
 
-	for(int i = 0; i<3; i++)
-		for(int j=0; j<3; j++)
-			rot_mat(i,j) = forkin_solver.R[i][j];
+  for(int i = 0; i<3; i++)
+    for(int j=0; j<3; j++)
+      rot_mat(i,j) = forkin_solver.R[i][j];
 
-	res_lin = rot_mat*vel_vec_linear;
-	res_ang = rot_mat*vel_vec_angular;
+  res_lin = rot_mat*vel_vec_linear;
+  res_ang = rot_mat*vel_vec_angular;
 
   ToolTwist params;
   params.x = res_lin(0,0);
@@ -132,11 +130,9 @@ void ArmNode::toolTaskFrameVelocityCallback(const geometry_msgs::Twist::ConstPtr
   params.yaw = res_ang(2,0);
 
   lock();
-
   if (command_) delete command_;
   command_ = new ToolSpeedCommand(arm_, params, accel_, (1.0/frequency_)*2.0);
   unlock();
-
 }
 
 bool ArmNode::setDigitalOutCallback(ur_arm::SetDigitalOut::Request &request, ur_arm::SetDigitalOut::Response &response)
@@ -170,54 +166,59 @@ void ArmNode::init()
 }
 
 bool ArmNode::homingCallback(std_srvs::Empty::Request &req,
-		std_srvs::Empty::Response &res){
-	return home();
+                             std_srvs::Empty::Response &res)
+{
+  return home();
 }
 
-bool ArmNode::home(){
+bool ArmNode::home()
+{
   JointAngles params;
   std_msgs::Bool msg_arm_homing_status;
   if(nh_.getParam("homing_joint_pos1",params.base)
-		  &&nh_.getParam("homing_joint_pos2",params.shoulder)
-		  &&nh_.getParam("homing_joint_pos3",params.elbow)
-		  &&nh_.getParam("homing_joint_pos4",params.wrist1)
-		  &&nh_.getParam("homing_joint_pos5",params.wrist2)
-		  &&nh_.getParam("homing_joint_pos6",params.wrist3)){
-	  params.base = params.base/180.0*3.141592;
-	  params.shoulder = params.shoulder/180.0*3.141592;
-	  params.elbow = params.elbow/180.0*3.141592;
-	  params.wrist1 = params.wrist1/180.0*3.141592;
-	  params.wrist2 = params.wrist2/180.0*3.141592;
-	  params.wrist3 = params.wrist3/180.0*3.141592;
+     && nh_.getParam("homing_joint_pos2",params.shoulder)
+     && nh_.getParam("homing_joint_pos3",params.elbow)
+     && nh_.getParam("homing_joint_pos4",params.wrist1)
+     && nh_.getParam("homing_joint_pos5",params.wrist2)
+     && nh_.getParam("homing_joint_pos6",params.wrist3))
+  {
+    params.base = params.base/180.0*3.141592;
+    params.shoulder = params.shoulder/180.0*3.141592;
+    params.elbow = params.elbow/180.0*3.141592;
+    params.wrist1 = params.wrist1/180.0*3.141592;
+    params.wrist2 = params.wrist2/180.0*3.141592;
+    params.wrist3 = params.wrist3/180.0*3.141592;
 
-
-	  lock();
-	  if (command_) delete command_;
-	  command_ = new MoveJointsCommand(arm_, params, speed_, accel_);
-	  unlock();
-	  command_->apply();
-	  //XXX: It only wait for 3 seconds and then assumes that the homing is done. The position errors of the joints can be checked instead.
-	  ros::Rate homing_check_rate(0.5);
-	  while(ros::ok()){
-		  arm_->update();
-		  JointAngles angles = arm_->getJointAngles();
-		  if(fabs(params.base-angles.base) <0.01 &&
-			 fabs(params.shoulder-angles.shoulder) <0.01 &&
-			 fabs(params.elbow-angles.elbow) <0.01 &&
-			 fabs(params.wrist1-angles.wrist1) <0.01 &&
-			 fabs(params.wrist2-angles.wrist2) <0.01 &&
-			 fabs(params.wrist3-angles.wrist3) <0.01){
-			  ros::spinOnce();
-			  break;
-		  }
-		  ros::spinOnce();
-		  homing_check_rate.sleep();
-	  }
-	return true;
+    lock();
+    if (command_) delete command_;
+    command_ = new MoveJointsCommand(arm_, params, speed_, accel_);
+    unlock();
+    command_->apply();
+    //XXX: It only wait for 3 seconds and then assumes that the homing is done. The position errors of the joints can be checked instead.
+    ros::Rate homing_check_rate(0.5);
+    while(ros::ok())
+    {
+      arm_->update();
+      JointAngles angles = arm_->getJointAngles();
+      if(fabs(params.base-angles.base) <0.01 &&
+         fabs(params.shoulder-angles.shoulder) <0.01 &&
+         fabs(params.elbow-angles.elbow) <0.01 &&
+         fabs(params.wrist1-angles.wrist1) <0.01 &&
+         fabs(params.wrist2-angles.wrist2) <0.01 &&
+         fabs(params.wrist3-angles.wrist3) <0.01)
+      {
+        ros::spinOnce();
+        break;
+      }
+      ros::spinOnce();
+      homing_check_rate.sleep();
+    }
+    return true;
   }
-  else{
-	  ROS_ERROR("[ur_arm]: Homing is unsuccessful. The parameters are not set.");
-	  return false;
+  else
+  {
+    ROS_ERROR("[ur_arm]: Homing is unsuccessful. The parameters are not set.");
+    return false;
   }
 }
 
@@ -250,31 +251,28 @@ void ArmNode::publishJointInfo()
 
 void ArmNode::publishToolPos()
 {
+  JointAngles angles = arm_->getJointAngles();
 
-	JointAngles angles = arm_->getJointAngles();
+  double q[6];
+  q[0] = angles.base;
+  q[1] = angles.shoulder;
+  q[2] = angles.elbow;
+  q[3] = angles.wrist1;
+  q[4] = angles.wrist2;
+  q[5] = angles.wrist3;
+  forkin_solver.solveForwardKin(q);
 
-	double q[6];
-	q[0] = angles.base;
-	q[1] = angles.shoulder;
-	q[2] = angles.elbow;
-	q[3] = angles.wrist1;
-	q[4] = angles.wrist2;
-	q[5] = angles.wrist3;
-	forkin_solver.solveForwardKin(q);
+  geometry_msgs::Pose msg_pose;
+  msg_pose.position.x = forkin_solver.T[0];
+  msg_pose.position.y = forkin_solver.T[1];
+  msg_pose.position.z = forkin_solver.T[2];
 
-	geometry_msgs::Pose msg_pose;
-	msg_pose.position.x = forkin_solver.T[0];
-	msg_pose.position.y = forkin_solver.T[1];
-	msg_pose.position.z = forkin_solver.T[2];
-
-	double yaw, pitch, roll;
-	yaw = std::atan2(forkin_solver.R[1][0],forkin_solver.R[0][0]);
-	pitch = std::atan2(-forkin_solver.R[2][0],std::sqrt(std::pow(forkin_solver.R[2][1],2.0)+std::pow(forkin_solver.R[2][2],2.0)));
-	roll = std::atan2(forkin_solver.R[2][1],forkin_solver.R[2][2]);
-	rpyToQuaternion(roll, pitch, yaw, msg_pose.orientation);
-	tool_pos_pub_.publish(msg_pose);
-
-
+  double yaw, pitch, roll;
+  yaw = std::atan2(forkin_solver.R[1][0],forkin_solver.R[0][0]);
+  pitch = std::atan2(-forkin_solver.R[2][0],std::sqrt(std::pow(forkin_solver.R[2][1],2.0)+std::pow(forkin_solver.R[2][2],2.0)));
+  roll = std::atan2(forkin_solver.R[2][1],forkin_solver.R[2][2]);
+  rpyToQuaternion(roll, pitch, yaw, msg_pose.orientation);
+  tool_pos_pub_.publish(msg_pose);
 }
 
 void ArmNode::spin()
@@ -283,7 +281,6 @@ void ArmNode::spin()
 
   while (ros::ok())
   {
-
     arm_->update();
     lock();
     if (command_)
@@ -293,6 +290,5 @@ void ArmNode::spin()
     publishToolPos();
     ros::spinOnce();
     loop_rate.sleep();
-
   }
 }

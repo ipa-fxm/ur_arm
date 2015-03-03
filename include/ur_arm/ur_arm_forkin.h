@@ -22,25 +22,25 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Core>
 
-class URForwardKinSolver{
-
-	Eigen::MatrixXd* H;
-	Eigen::VectorXd a;
-	Eigen::VectorXd alpha;
-	Eigen::VectorXd d;
-	Eigen::VectorXd theta;
-	double pi;
+class URForwardKinSolver
+{
+  Eigen::MatrixXd* H;
+  Eigen::VectorXd a;
+  Eigen::VectorXd alpha;
+  Eigen::VectorXd d;
+  Eigen::VectorXd theta;
+  double pi;
 
 public:
-	double T[3];
-	double R[3][3];
-	URForwardKinSolver();
-	void solveForwardKin(double q[]);
-	void matMul33(double a1[][3], double a2[][3], double a3[][3]);
-	void matMul44(double a1[][4], double a2[][4], double a3[][4]);
-	void euler2rot(double yaw, double pitch, double roll, double resMat[][3]);
-	void vecMul3(double a1[][3], double a2[], double a3[]);
-	void vecMul4(double a1[][4], double a2[], double a3[]);
+  double T[3];
+  double R[3][3];
+  URForwardKinSolver();
+  void solveForwardKin(double q[]);
+  void matMul33(double a1[][3], double a2[][3], double a3[][3]);
+  void matMul44(double a1[][4], double a2[][4], double a3[][4]);
+  void euler2rot(double yaw, double pitch, double roll, double resMat[][3]);
+  void vecMul3(double a1[][3], double a2[], double a3[]);
+  void vecMul4(double a1[][4], double a2[], double a3[]);
 };
 
 #endif /* UR_ARM_FORKIN_H_ */
