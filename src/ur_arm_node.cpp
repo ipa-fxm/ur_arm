@@ -70,6 +70,28 @@ void ArmNode::jointVelocityCallback(const ur_arm::Joints::ConstPtr &msg)
   unlock();
 }
 
+void ArmNode::jointVelocityFloat64MultiArrayCallback(const std_msgs::Float64MultiArray::ConstPtr &msg)
+{
+  if(msg->data.size() != 6)
+  {
+    ROS_ERROR("DoF does not match");
+    return;
+  }
+  
+  JointSpeeds params;
+  params.base = msg->data[0];
+  params.shoulder = msg->data[1];
+  params.elbow = msg->data[2];
+  params.wrist1 = msg->data[3];
+  params.wrist2 = msg->data[4];
+  params.wrist3 = msg->data[5];
+
+  lock();
+  if (command_) delete command_;
+  command_ = new JointSpeedsCommand(arm_, params, accel_, (1.0/frequency_)*2);
+  unlock();
+}
+
 void ArmNode::toolVelocityCallback(const geometry_msgs::Twist::ConstPtr &msg)
 {
   ToolTwist params;
@@ -150,10 +172,13 @@ void ArmNode::init()
   nh_.getParam("frequency", frequency_);
   nh_.getParam("speed", speed_);
   nh_.getParam("acceleration", accel_);
+  
+  ROS_WARN_STREAM("Frequency: " << frequency_ << "; Speed: " << speed_ << "; Accelleration: " << accel_);
 
   //home();
   srvsrvr_homing_= nh_.advertiseService("cmd_home", &ArmNode::homingCallback, this);
   joint_vel_sub_ = nh_.subscribe("cmd_joint_vel", 1, &ArmNode::jointVelocityCallback, this);
+  joint_vel_float64multiarray_sub_ = nh_.subscribe("joint_group_velocity_controller/command", 1, &ArmNode::jointVelocityFloat64MultiArrayCallback, this);
   tool_vel_sub_ = nh_.subscribe("cmd_tool_vel", 1, &ArmNode::toolVelocityCallback, this);
   toolTF_vel_sub_ = nh_.subscribe("cmd_tool_tf_vel", 1, &ArmNode::toolTaskFrameVelocityCallback, this);
   joint_pos_sub_ = nh_.subscribe("cmd_joint_pos", 1, &ArmNode::jointPositionCallback, this);

@@ -23,6 +23,7 @@
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Pose.h>
+#include <std_msgs/Float64MultiArray.h>
 #include <std_srvs/Empty.h>
 #include <ur_arm/Joints.h>
 #include <ur_arm/SetDigitalOut.h>
@@ -145,7 +146,7 @@ namespace ur_arm
   {
     protected:
       ros::NodeHandle nh_;
-      ros::Subscriber joint_vel_sub_, tool_vel_sub_, joint_pos_sub_, tool_pos_sub_, toolTF_vel_sub_,sub_homing_command_;
+      ros::Subscriber joint_vel_sub_, joint_vel_float64multiarray_sub_, tool_vel_sub_, joint_pos_sub_, tool_pos_sub_, toolTF_vel_sub_,sub_homing_command_;
       ros::Publisher joint_pos_pub_, joint_vel_pub_, tool_pos_pub_;
       ros::ServiceServer srvsrvr_homing_, srvsrvr_dio_;
       double frequency_, speed_, accel_;
@@ -179,6 +180,13 @@ namespace ur_arm
        * \param msg Pointer to a ur_arm/Joints message, containing the velocity in [rad/s]
        */
       void jointVelocityCallback(const ur_arm::Joints::ConstPtr &msg);
+      
+      /// Called when a new joint velocity command is received
+      /**
+       * Sends the new velocity to the arm controller
+       * \param msg Pointer to a std_msgs/Float64MultiArray message, containing the velocity in [rad/s]
+       */
+      void jointVelocityFloat64MultiArrayCallback(const std_msgs::Float64MultiArray::ConstPtr &msg);
 
       /// Called when a new tool velocity command is received
       /**
