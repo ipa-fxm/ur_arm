@@ -38,6 +38,7 @@ add_library(ur_arm src/ur_arm.cpp src/ur_arm_forkin.cpp)
 ## Declare a cpp executable
 add_executable(ur_arm_node src/ur_arm_node.cpp src/main.cpp)
 target_link_libraries(ur_arm_node ur_arm ${catkin_LIBRARIES})
+add_dependencies(ur_arm_node ${PROJECT_NAME}_gencpp)
 
 
 
